@@ -472,6 +472,13 @@ static const Patch patches_v38_1[] = {
     { 0x194E41DULL, {0xE8,0xBE,0xF4,0xAE,0x01}, 5, {0xE9,0x1E,0x03,0x00,0x00}, 5 }
 };
 
+static const Patch patches_v39_0[] = {
+    { 0x1800B60ULL, {0x0F,0x84}, 2, {0x48,0xE9}, 2 },
+    { 0x1800A3AULL, {0x0F,0x84}, 2, {0x48,0xE9}, 2 },
+    { 0x8D0F24ULL,  {0x74}, 1, {0xEB}, 1 },
+    { 0x18D9FCEULL, {0xE8,0x1D,0x6E,0xC5,0x01}, 5, {0xE9,0x25,0x00,0x00,0x00}, 5 },
+    { 0x18D9C5DULL, {0xE8,0x8E,0x71,0xC5,0x01}, 5, {0xE9,0x1E,0x03,0x00,0x00}, 5 }
+};
 
 // ----------------- Versions table -----------------
 static const Version versions[] = {
@@ -493,7 +500,8 @@ static const Version versions[] = {
     { L"v37.0", patches_v37_0, sizeof(patches_v37_0) / sizeof(patches_v37_0[0]) },
     { L"v37.1", patches_v37_1, sizeof(patches_v37_1) / sizeof(patches_v37_1[0]) },
     { L"v38.0", patches_v38_0, sizeof(patches_v38_0) / sizeof(patches_v38_0[0]) },
-    { L"v38.1", patches_v38_1, sizeof(patches_v38_1) / sizeof(patches_v38_1[0]) }
+    { L"v38.1", patches_v38_1, sizeof(patches_v38_1) / sizeof(patches_v38_1[0]) },
+    { L"v39.0", patches_v39_0, sizeof(patches_v39_0) / sizeof(patches_v39_0[0]) }
 };
 
 static const SIZE_T versions_count = sizeof(versions) / sizeof(versions[0]);
