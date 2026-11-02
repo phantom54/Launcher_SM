@@ -108,7 +108,6 @@ struct AOBResults {
     SIZE_T count;
 };
 
-/* Сканирует уже прочитанный буфер. base - виртуальный адрес, соответствующий buffer[0]. */
 AOBResults AOBScanBuffer(const u8* buffer, SIZE_T size, u64 base, const u8* pattern, SIZE_T pattern_len) {
     AOBResults results = {0};
     if (!buffer || size < pattern_len || pattern_len == 0 || pattern_len > MAX_PATTERN_BYTES) return results;
@@ -188,12 +187,12 @@ static const PatchOffset patch1_writes[] = {
 };
 
 static const PatchOffset patch2_writes[] = {
-    { 0xA, {0xEB}, 1, {{0x74}, {0xEB}}, 1, 2 }
+    { 0xA, {0xEB}, 1, {{0x74}, {0xEB}}, 1, 2 } //save/load (in game)
 };
 
 static const PatchOffset patch3_writes[] = {
-    { 0x1A,   {0xE9,0x25,0x00,0x00,0x00}, 5, {{0xE8}, {0xE9}}, 1, 2 },
-    { -0x357, {0xE9,0x1E,0x03,0x00,0x00}, 5, {{0xE8}, {0xE9}}, 1, 2 }
+    { 0x1A,   {0xE9,0x25,0x00,0x00,0x00}, 5, {{0xE8}, {0xE9}}, 1, 2 }, //load (in game)
+    { -0x357, {0xE9,0x1E,0x03,0x00,0x00}, 5, {{0xE8}, {0xE9}}, 1, 2 }  //load (in game) system.smg
 };
 
 static const PatchAOB aob_patches[] = {
