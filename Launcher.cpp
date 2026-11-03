@@ -464,16 +464,111 @@ static const Version versions[] = {
 
 static const SIZE_T versions_count = sizeof(versions) / sizeof(versions[0]);
 
+static BOOL CALLBACK EnumWindowsProc_FindProcesses(HWND hWnd, LPARAM lParam) {
+    struct ProcessList {
+        DWORD pids[10];
+        int count;
+    } *list = (struct ProcessList*)lParam;
+    if (list->count >= 10) return FALSE;
+    DWORD pid = 0;
+    GetWindowThreadProcessId(hWnd, &pid);
+    if (pid) {
+        HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+        if (hProc) {
+            WCHAR exeName[MAX_PATH] = {};
+            DWORD size = MAX_PATH;
+            if (QueryFullProcessImageNameW(hProc, 0, exeName, &size)) {
+                const WCHAR* name = wcsrchr(exeName, L'\\');
+                name = name ? name + 1 : exeName;
+                if (_wcsicmp(name, L"Seaside Mystery.exe") == 0) {
+                    BOOL already = FALSE;
+                    for (int i = 0; i < list->count; i++) {
+                        if (list->pids[i] == pid) { already = TRUE; break; }
+                    }
+                    if (!already) list->pids[list->count++] = pid;
+                }
+            }
+            CloseHandle(hProc);
+        }
+    }
+    return TRUE;
+}
+
+static int FindProcessesByName(const WCHAR* exeName, DWORD* pids, int maxCount) {
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap == INVALID_HANDLE_VALUE) return 0;
+    PROCESSENTRY32W pe; pe.dwSize = sizeof(pe);
+    int count = 0;
+    if (Process32FirstW(snap, &pe)) {
+        do {
+            if (_wcsicmp(pe.szExeFile, exeName) == 0) {
+                if (count < maxCount) pids[count++] = pe.th32ProcessID;
+                if (count >= maxCount) break;
+            }
+        } while (Process32NextW(snap, &pe));
+    }
+    CloseHandle(snap);
+    return count;
+}
+
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
                     _In_ PWSTR lpCmdLine, _In_ int nShowCmd) {
+    BOOL attachMode = FALSE;
+    {
+        WCHAR* cmdLine = GetCommandLineW();
+        WCHAR* p = cmdLine;
+        while (*p) {
+            if (*p == L'-' || *p == L'/') {
+                if (p[1] == L'a' && (p[2] == L' ' || p[2] == L'\0' || p[2] == L'\t')) {
+                    attachMode = TRUE;
+                    break;
+                }
+            }
+            p++;
+        }
+    }
+
+    const WCHAR* exeName = L"Seaside Mystery.exe";
+
+    if (attachMode) {
+        DWORD pids[10] = {};
+        int pidCount = FindProcessesByName(exeName, pids, 10);
+        if (pidCount == 0) {
+            WCHAR msg[256];
+            wsprintfW(msg, L"%ls is not running", exeName);
+            MessageBoxW(NULL, msg, L"Launcher", MB_OK | MB_ICONERROR);
+            return 1;
+        }
+
+        for (int i = 0; i < pidCount; i++) {
+            DWORD pid = pids[i];
+            u64 base = 0;
+            SIZE_T moduleSize = 0;
+            if (!GetModuleInfo(pid, L"GameAssembly.dll", &base, &moduleSize)) continue;
+
+            HANDLE hProc = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION, FALSE, pid);
+            if (!hProc) continue;
+
+            BOOL applied = FALSE;
+            for (SIZE_T j = 0; j < versions_count; ++j) {
+                if (PatchDirectAddresses(hProc, base, &versions[j])) { applied = TRUE; break; }
+            }
+
+            if (!applied) {
+                FallbackAOB(hProc, base, moduleSize);
+            }
+
+            CloseHandle(hProc);
+        }
+        return 0;
+    }
+
     WCHAR selfDir[MAX_PATH] = {};
     DWORD len = GetModuleFileNameW(NULL, selfDir, MAX_PATH);
     if (len == 0 || len >= MAX_PATH) return 1;
     WCHAR* lastSlash = wcsrchr(selfDir, L'\\');
     if (!lastSlash) return 1;
     *lastSlash = L'\0';
-
-    const WCHAR* exeName = L"Seaside Mystery.exe";
 
     WCHAR gamePath[MAX_PATH] = {};
     const WCHAR* sep = L"\\";
@@ -486,9 +581,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi = {};
     if (!CreateProcessW(gamePath, NULL, NULL, NULL, FALSE, 0, NULL, selfDir, &si, &pi)) {
-        char msg[256];
-        wsprintfA(msg, "Failed to start %ls", exeName);
-        MessageBoxA(NULL, msg, "Launcher", MB_OK | MB_ICONERROR);
+        WCHAR msg[256];
+        wsprintfW(msg, L"Failed to start %ls", exeName);
+        MessageBoxW(NULL, msg, L"Launcher", MB_OK | MB_ICONERROR);
         return 1;
     }
 
@@ -507,7 +602,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
     HANDLE hProc = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION, FALSE, pid);
     if (!hProc) {
-        MessageBoxA(NULL, "Failed to access game process", "Launcher", MB_OK | MB_ICONERROR);
+        MessageBoxW(NULL, L"Failed to access game process", L"Launcher", MB_OK | MB_ICONERROR);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
         return 1;
