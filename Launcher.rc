@@ -1,10 +1,10 @@
-﻿#include "windows.h"
+#include "windows.h"
 
 IDI_LAUNCHER ICON "Launcher.ico"
 
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION 1,0,0,0
- PRODUCTVERSION 0,39,0
+ PRODUCTVERSION 0,39,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -21,13 +21,13 @@ BEGIN
         BEGIN
             VALUE "FileDescription", "Launcher"
             VALUE "FileVersion", "1.0.0.0"
-            VALUE "ProductVersion", "0.39.0"
+            VALUE "ProductVersion", "0.39.1"
             VALUE "ProductName", "Seaside Mystery"
             VALUE "CompanyName", "YourDevil54"
             VALUE "LegalCopyright", "© 2026 YourDevil54"
             VALUE "OriginalFilename", "Launcher.exe"
             VALUE "InternalName", "Launcher"
-            VALUE "Comments", "Game version: v0.30.0 - v0.39.0+"
+            VALUE "Comments", "Game version: v0.30.0 - v0.39.1+"
         END
     END
     BLOCK "VarFileInfo"
