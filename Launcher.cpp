@@ -464,11 +464,31 @@ static const Version versions[] = {
 
 static const SIZE_T versions_count = sizeof(versions) / sizeof(versions[0]);
 
-int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR lpCmdLine, _In_ int nShowCmd) {
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
+                    _In_ PWSTR lpCmdLine, _In_ int nShowCmd) {
+    WCHAR selfDir[MAX_PATH] = {};
+    DWORD len = GetModuleFileNameW(NULL, selfDir, MAX_PATH);
+    if (len == 0 || len >= MAX_PATH) return 1;
+    WCHAR* lastSlash = wcsrchr(selfDir, L'\\');
+    if (!lastSlash) return 1;
+    *lastSlash = L'\0';
+
+    const WCHAR* exeName = L"Seaside Mystery.exe";
+
+    WCHAR gamePath[MAX_PATH] = {};
+    const WCHAR* sep = L"\\";
+    if (lstrlenW(selfDir) + lstrlenW(sep) + lstrlenW(exeName) >= MAX_PATH)
+        return 1;
+    lstrcpyW(gamePath, selfDir);
+    lstrcatW(gamePath, sep);
+    lstrcatW(gamePath, exeName);
+
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi = {};
-    if (!CreateProcessW(L"Seaside Mystery.exe", NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-        MessageBoxA(NULL, "Failed to start Seaside Mystery.exe", "Launcher", MB_OK | MB_ICONERROR);
+    if (!CreateProcessW(gamePath, NULL, NULL, NULL, FALSE, 0, NULL, selfDir, &si, &pi)) {
+        char msg[256];
+        wsprintfA(msg, "Failed to start %ls", exeName);
+        MessageBoxA(NULL, msg, "Launcher", MB_OK | MB_ICONERROR);
         return 1;
     }
 
@@ -483,14 +503,14 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         if (GetModuleInfo(pid, L"GameAssembly.dll", &base, &moduleSize)) break;
         Sleep(step); waited += step;
     }
-    if (!base) { CloseHandle(pi.hProcess); CloseHandle(pi.hThread); return 0; }
+    if (!base) { CloseHandle(pi.hProcess); CloseHandle(pi.hThread); return 1; }
 
     HANDLE hProc = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION, FALSE, pid);
     if (!hProc) {
-        MessageBoxA(NULL, "Failed to open game process", "Launcher", MB_OK | MB_ICONERROR);
+        MessageBoxA(NULL, "Failed to access game process", "Launcher", MB_OK | MB_ICONERROR);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
-        return 0;
+        return 1;
     }
 
     BOOL applied = FALSE;
